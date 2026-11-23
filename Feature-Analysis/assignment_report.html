@@ -8590,11 +8590,14 @@ Documentation: <a href="https://feature-engine.trainindata.com/">https://feature
 <tbody>
 <tr>
 <td>performance_score</td>
-<td>Target Feature stated in the assignment description (not a potential target feature; just the target feature)</td>
+<td>Target feature stated in the assignment description (not a potential target feature; just the target feature).</td>
+</tr>
+<tr>
+<td>manager_discretionary_bonus_count</td>
+<td>If bonuses are awarded based on the performance score, then we are using information that we do not have access to at prediction time, thus causing data leakage. However, if bonuses are awarded before the final performance evaluation, the feature could be a valid predictor. Since the timing is unknown, I chose to exclude this feature to err on the safer side.</td>
 </tr>
 </tbody>
 </table>
-<p>| manager_discretionary_bonus_count | If bonuses are awarded based on the performance score, then we are using information that we not have access to at prediction time, thus causing data leakage. However, if bonuses are awarded before the final performance evaluation, the feature could be a valid predictor. Since the timing is unknown, I chose to exclude this feature so to err on the safer side.</p>
 <p>Other features, such as 360_feedback_score_avg, could also potentially introduce target leakage if they are dependent on an employee's performance_score. However, the rules used to generate the synthetic dataset are unknown, so this cannot be confirmed. I considered manager_discretionary_bonus_count a greater potential risk because, in my opinion,it is the feature most likely to be influenced by the final performance score.</p>
 </div>
 </div>
@@ -9071,14 +9074,15 @@ dtype: object
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [68]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [78]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="c1"># add to our current pipeline</span>
 <span class="n">preprocessing_pipeline</span> <span class="o">=</span> <span class="n">Pipeline</span><span class="p">([</span>
     <span class="p">(</span><span class="s2">"imputation"</span><span class="p">,</span> <span class="n">imputation_pipeline</span><span class="p">),</span>
     <span class="p">(</span><span class="s2">"encoding"</span><span class="p">,</span> <span class="n">encoding</span><span class="p">),</span>
-    <span class="p">(</span><span class="s2">"normalization"</span><span class="p">,</span> <span class="n">MinMaxScaler</span><span class="p">())</span> <span class="c1"># perform normalization on all (categorical remain effectively unchanged)</span>
+    <span class="c1"># perform normalization on all (categorical remain effectively unchanged)</span>
+    <span class="p">(</span><span class="s2">"normalization"</span><span class="p">,</span> <span class="n">MinMaxScaler</span><span class="p">())</span>
 <span class="p">])</span>
 </pre></div>
 </div>
@@ -9253,10 +9257,12 @@ dtype: object
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [71]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">target_corrs</span> <span class="o">=</span> <span class="n">correlations</span><span class="p">[</span><span class="s2">"performance_score"</span><span class="p">]</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s2">"performance_score"</span><span class="p">)</span> <span class="c1"># exclude the correlation with itself</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="c1"># exclude the correlation with itself</span>
+<span class="n">target_corrs</span> <span class="o">=</span> <span class="n">correlations</span><span class="p">[</span><span class="s2">"performance_score"</span><span class="p">]</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s2">"performance_score"</span><span class="p">)</span>
+ 
 <span class="n">target_corrs</span> <span class="o">=</span> <span class="n">target_corrs</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">ascending</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">target_corrs</span><span class="o">.</span><span class="n">to_string</span><span class="p">())</span>
 
@@ -9411,13 +9417,13 @@ employee_discount_usage_rate            0.002456
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [72]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">threshold</span> <span class="o">=</span> <span class="mf">0.30</span>
 
 <span class="n">selected_features</span> <span class="o">=</span> <span class="n">target_corrs</span><span class="p">[</span><span class="n">target_corrs</span> <span class="o">&gt;</span> <span class="n">threshold</span><span class="p">]</span><span class="o">.</span><span class="n">index</span>
-<span class="n">selected_indices</span> <span class="o">=</span> <span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">filter_feature_names</span><span class="p">)</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">feature</span><span class="p">)</span> <span class="k">for</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">selected_features</span><span class="p">]</span>
+<span class="n">selected_indices</span> <span class="o">=</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">filter_feature_names</span><span class="p">)</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">feature</span><span class="p">)</span> <span class="k">for</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">selected_features</span><span class="p">]</span>
 
 <span class="n">X_train_selected</span> <span class="o">=</span> <span class="n">X_train_filter_preprocessed</span><span class="p">[:,</span> <span class="n">selected_indices</span><span class="p">]</span>
 <span class="n">X_test_selected</span> <span class="o">=</span> <span class="n">X_test_filter_preprocessed</span><span class="p">[:,</span> <span class="n">selected_indices</span><span class="p">]</span>
@@ -10806,10 +10812,10 @@ forceTheme('sk-container-id-7');</script></body>
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [74]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">y_pred_filter</span> <span class="o">=</span> <span class="n">model_filter</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test_selected</span><span class="p">)</span> <span class="c1"># use the trained network on the test subset</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">y_pred_filter</span> <span class="o">=</span><span class="n">model_filter</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test_selected</span><span class="p">)</span> <span class="c1">#use trained network on the test subset</span>
 
 <span class="c1"># now calculatre RMSE </span>
 <span class="n">filter_rmse</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">mean_squared_error</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">y_pred_filter</span><span class="p">))</span>
@@ -10951,7 +10957,7 @@ forceTheme('sk-container-id-7');</script></body>
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [21]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="c1"># SBS:</span>
@@ -10974,7 +10980,7 @@ forceTheme('sk-container-id-7');</script></body>
 
         <span class="n">scores</span><span class="p">[</span><span class="n">feature</span><span class="p">]</span> <span class="o">=</span> <span class="n">rmse</span>
 
-    <span class="c1"># Step 5: Check which removed feature gave the best evaluation metric and remove it from the set permanently</span>
+    <span class="c1"># Step 5: Check which removed feature gave the best evaluation metric and remove it</span>
     <span class="n">best_feature</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">scores</span><span class="p">,</span> <span class="n">key</span> <span class="o">=</span> <span class="n">scores</span><span class="o">.</span><span class="n">get</span><span class="p">)</span>
     <span class="n">selected_features_sbs</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">best_feature</span><span class="p">)</span>
 
